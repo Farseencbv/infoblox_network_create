@@ -12,7 +12,8 @@ This is a Python script that creates new network container(/23) based on provide
 
 python create_networks.py [state]
 
-image.png
+![](usage.example.png)
+
 
 - The script takes a 2-letter state code as a positional argument. For example: "AR", "FL", "NY".
 
@@ -30,7 +31,8 @@ Before running the script, you must set the following variables in the script:
 # Example
 To create new network containers and networks for the state of Arkansas:
 
-image.png
+![](usage_state=AR.png)
+
 
 # License
 This project is licensed under the MIT License - see the LICENSE file for details.
