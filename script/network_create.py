@@ -36,7 +36,7 @@ headers = {"content-type": "application/json"}
 parser = argparse.ArgumentParser(description="List of State Extensible Attribute values.")
 parser.add_argument("ea", type=str, choices=state_ea_values, help="Please enter state value in short hand. Example: AR, KS, MI, MO")
 args = parser.parse_args()
-state = args.ea()
+state = args.ea.upper()
 
 
 def network_container_23():
@@ -48,7 +48,7 @@ def network_container_23():
     # STEP 1 Get the reference of the network container which has user provided EA-State Value
     
     try:
-        container_23 = s.get(f'{gm_url}/networkcontainer?_return_fields=extattrs&*State={state}', verify=False, headers=headers)
+        container_23 = s.get(f'{gm_url}/networkcontainer?_return_fields=extattrs&*SNOW={state}', verify=False, headers=headers)
         d = container_23.json()
         ref_container = d[0]['_ref']
         
