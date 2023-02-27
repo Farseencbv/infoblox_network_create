@@ -15,22 +15,27 @@ import requests
 import json
 import re
 import argparse
-import logging
+
 
 requests.packages.urllib3.disable_warnings()
 
+
 # Grid Variables
-gm_url = "https://192.168.1.100/wapi/v2.7"
-gm_user = 'farseencbv'
+gm_url = "https://1.1.1.1/wapi/v2.7"
+gm_user = 'fars'
 gm_pwd = 'infoblox'
+
 
 # List of state codes for the new network container
 state_ea_values = ['AR', 'AZ', 'CA', 'CO', 'HI', 'ID', 'KS', 'MI', 'MO', 'MT', 'NM', 'NV', 'OH', 'OR', 'TX', 'UT', 'WA']
 
+
 # Setting up a session with the Infoblox GM
 s = requests.Session()
 s.auth = (gm_user, gm_pwd)
+s.verify = False
 headers = {"content-type": "application/json"}
+
 
 # initialize parser and set up Extensible attribute as argument for calling the script from CLI
 parser = argparse.ArgumentParser(description="List of State Extensible Attribute values.")
@@ -40,71 +45,72 @@ state = args.ea.upper()
 
 
 def network_container_23():
-
     """Function to query available network under the container and create it as a new network container"""
+
 
     # Querying available network is based on the user provided state attribute value
     
     # STEP 1 Get the reference of the network container which has user provided EA-State Value
     
-    try:
-        container_23 = s.get(f'{gm_url}/networkcontainer?_return_fields=extattrs&*SNOW={state}', verify=False, headers=headers)
-        d = container_23.json()
-        ref_container = d[0]['_ref']
-        
-        # STEP 2 Query next available network under the above network container
-        payload = dict(cidr=23)
-        url = f"{gm_url}/{ref_container}?_function=next_available_network"
-        response = s.post(url, verify=False, headers=headers, data=json.dumps(payload))
-        d = response.json()
-        new_container = d['networks'][0]
-       
-        # Create the above network as network container and capture reference
-        payload = dict(network=new_container)
-        url = f"{gm_url}/networkcontainer"
-        response = s.post(url, verify=False, headers=headers, data=json.dumps(payload))
-        
-        ref_new_container = response.json().strip()
-        ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', ref_new_container)
-        print(f'Network container "{ip[0]}/23" is created')
-        return ref_new_container
+    container_23 = s.get(f'{gm_url}/networkcontainer?_return_fields=extattrs&*SNOW={state}', headers=headers)
+    d = container_23.json()
+    ref_container = d[0]['_ref']
     
-    except Exception as e:
-        logging.error(f"An error occurred while creating the network container: {e}")
-        return None
+
+    # STEP 2 Query next available network under the above network container
+    payload = dict(cidr=23)
+    url = f"{gm_url}/{ref_container}?_function=next_available_network"
+    response = s.post(url, headers=headers, data=json.dumps(payload))
+    d = response.json()
+    new_container = d['networks'][0]
+   
+
+    # Create the above network as network container and capture reference
+    payload = dict(network=new_container)
+    url = f"{gm_url}/networkcontainer"
+    response = s.post(url, headers=headers, data=json.dumps(payload))
+    
+    if response.status_code != 201:
+        raise Exception(f"Error creating network container. Response status code: {response.status_code}")
+    
+    ref_new_container = response.json().strip()
+    ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', ref_new_container)
+    print(f'Network container "{ip[0]}/23" is created')
+    return ref_new_container
+
 
 def create_networks(ref_new_container, x):
-
     """Function to create /24, /25 and /27 networks under new network container"""
 
-    
-    
-    try:
-        # Query available 3 networks under this newly created network container
-        # Here we use "x" as a parameter to query /24, /25 and /27 networks
 
-        cidr = dict(cidr=x)
-        response = s.post(f'{gm_url}/{ref_new_container}?_function=next_available_network', verify=False, headers=headers, data=json.dumps(cidr))
-        d1 = response.json()
-        new_network = d1['networks'][0]
+    # Query available 3 networks under this newly created network container
+    # Here we use "x" as a parameter to query /24, /25 and /27 networks
 
-        # create /24 , /25 and /27 networks
-        payload = dict(network=new_network)
-        response = s.post(f'{gm_url}/network', verify=False, headers=headers, data=json.dumps(payload))
-        r = response.json()
-        ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', r)
-        print(f'Network "{ip[0]}/{x}" is created')
 
-    except Exception as e:
-        print(f"Error occurred while creating network: {str(e)}")
-try:
-    ref_new_container = network_container_23() # Create /23 new network container
-    print(" ")
+    cidr = dict(cidr=x)
+    response = s.post(f'{gm_url}/{ref_new_container}?_function=next_available_network', headers=headers, data=json.dumps(cidr))
+    d1 = response.json()
+    new_network = d1['networks'][0]
 
-    # Create /24, /25 and 27  networks under above /23 container
-    create_networks(ref_new_container, 24)
-    create_networks(ref_new_container, 25)
-    create_networks(ref_new_container, 27)
 
-except Exception as e:
-    print(f"Error occurred while creating network(s): {str(e)}")
+    # create /24 , /25 and /27 networks
+    payload = dict(network=new_network)
+    response = s.post(f'{gm_url}/network', headers=headers, data=json.dumps(payload))
+    r = response.json()
+    ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', r)
+    print(f'Network "{ip[0]}/{x}" is created')
+
+    if 'Error' in r:
+        raise Exception(f"An error occurred while creating network: {r}")
+
+print(" ")
+ref_new_container = network_container_23() # Create /23 new network container
+print(" ")
+
+
+# Create /24, /25 and 27  networks under above /23 container
+create_networks(ref_new_container, 24)
+create_networks(ref_new_container, 25)
+create_networks(ref_new_container, 27)
+
+
