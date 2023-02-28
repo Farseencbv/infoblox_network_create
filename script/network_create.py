@@ -34,7 +34,7 @@ state_ea_values = ['AR', 'AZ', 'CA', 'CO', 'HI', 'ID', 'KS', 'MI', 'MO', 'MT', '
 s = requests.Session()
 s.auth = (gm_user, gm_pwd)
 s.verify = False
-headers = {"content-type": "application/json"}
+s.headers = {"content-type": "application/json"}
 
 
 # initialize parser and set up Extensible attribute as argument for calling the script from CLI
@@ -47,12 +47,11 @@ state = args.ea.upper()
 def network_container_23():
     """Function to query available network under the container and create it as a new network container"""
 
-
     # Querying available network is based on the user provided state attribute value
-    
+
     # STEP 1 Get the reference of the network container which has user provided EA-State Value
     
-    container_23 = s.get(f'{gm_url}/networkcontainer?_return_fields=extattrs&*SNOW={state}', headers=headers)
+    container_23 = s.get(f'{gm_url}/networkcontainer?_return_fields=extattrs&*SNOW={state}')
     d = container_23.json()
     ref_container = d[0]['_ref']
     
@@ -60,7 +59,7 @@ def network_container_23():
     # STEP 2 Query next available network under the above network container
     payload = dict(cidr=23)
     url = f"{gm_url}/{ref_container}?_function=next_available_network"
-    response = s.post(url, headers=headers, data=json.dumps(payload))
+    response = s.post(url, data=json.dumps(payload))
     d = response.json()
     new_container = d['networks'][0]
    
@@ -68,7 +67,7 @@ def network_container_23():
     # Create the above network as network container and capture reference
     payload = dict(network=new_container)
     url = f"{gm_url}/networkcontainer"
-    response = s.post(url, headers=headers, data=json.dumps(payload))
+    response = s.post(url, data=json.dumps(payload))
     
     if response.status_code != 201:
         raise Exception(f"Error creating network container. Response status code: {response.status_code}")
@@ -82,20 +81,20 @@ def network_container_23():
 def create_networks(ref_new_container, x):
     """Function to create /24, /25 and /27 networks under new network container"""
 
-
     # Query available 3 networks under this newly created network container
+
     # Here we use "x" as a parameter to query /24, /25 and /27 networks
 
 
     cidr = dict(cidr=x)
-    response = s.post(f'{gm_url}/{ref_new_container}?_function=next_available_network', headers=headers, data=json.dumps(cidr))
+    response = s.post(f'{gm_url}/{ref_new_container}?_function=next_available_network', data=json.dumps(cidr))
     d1 = response.json()
     new_network = d1['networks'][0]
 
 
     # create /24 , /25 and /27 networks
     payload = dict(network=new_network)
-    response = s.post(f'{gm_url}/network', headers=headers, data=json.dumps(payload))
+    response = s.post(f'{gm_url}/network', data=json.dumps(payload))
     r = response.json()
     ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', r)
     print(f'Network "{ip[0]}/{x}" is created')
