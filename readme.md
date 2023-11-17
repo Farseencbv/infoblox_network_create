@@ -1,6 +1,6 @@
 # Infoblox Network Container and networks Creator
 
-This is a Python script that creates new network container(/23) based on provided Extensible Attribute value and 3 networks(/24,/25 and /27) under this new network container
+This is a Python script that creates new network container(/23) based on provided Extensible Attribute value and three new networks(/24,/25 and /27) under this new network container
 
 
 # Getting Started
